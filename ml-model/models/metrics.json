@@ -1,0 +1,32 @@
+{
+  "accuracy": 0.7472713586751976,
+  "roc_auc": 0.8261475391023949,
+  "sensitivity": 0.8050101557210562,
+  "specificity": 0.675,
+  "train_size": 21253,
+  "test_size": 5313,
+  "features": [
+    "OFF_RNK_DIFF",
+    "DEF_RNK_DIFF",
+    "PTS_AVG_DIFF",
+    "DEF_AVG_DIFF",
+    "HOME_OFF_RANK",
+    "HOME_DEF_RANK",
+    "AWAY_OFF_RANK",
+    "AWAY_DEF_RANK",
+    "HOME_RUNNING_OFF_RANK",
+    "HOME_RUNNING_DEF_RANK",
+    "OFF_MOMENTUM",
+    "DEF_MOMENTUM",
+    "RANK_INTERACTION",
+    "PTS_RANK_INTERACTION",
+    "HOME_COURT",
+    "GAME_NUMBER"
+  ],
+  "feature_count": 16,
+  "best_iteration": 42,
+  "best_score": 0.5076988002714393,
+  "model_type": "XGBoost Elite",
+  "model_version": "2.1",
+  "early_stopping_rounds": 15
+}
