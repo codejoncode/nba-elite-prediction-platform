@@ -1818,6 +1818,62 @@ npm run dev
 **Note:** Make sure both backend (5000) and Flask (5001) are running
 
 ---
+updated project plan complete architecture with authentication, component structure and deployment strategy:
+
+NBA Elite Predictions - Full Stack Portfolio Project
+├── Frontend (React + Vite)
+│   ├── components/
+│   │   ├── Auth/
+│   │   │   ├── LoginForm.jsx
+│   │   │   ├── RegisterForm.jsx
+│   │   │   └── AuthGuard.jsx
+│   │   ├── Dashboard/
+│   │   │   ├── MetricsCard.jsx
+│   │   │   ├── PredictionTable.jsx
+│   │   │   ├── FeatureImportance.jsx
+│   │   │   ├── Charts.jsx
+│   │   │   └── Dashboard.jsx
+│   │   └── Prediction/
+│   │       ├── PredictionForm.jsx
+│   │       └── TeamSelector.jsx
+│   ├── pages/
+│   │   ├── LoginPage.jsx
+│   │   ├── RegisterPage.jsx
+│   │   └── DashboardPage.jsx
+│   ├── hooks/
+│   │   ├── useAuth.js
+│   │   └── usePrediction.js
+│   ├── context/
+│   │   └── AuthContext.jsx
+│   └── App.jsx (routing)
+│
+├── Backend (Flask)
+│   ├── app.py (routes)
+│   ├── auth.py (JWT authentication)
+│   ├── predictor_elite.py (ML model)
+│   ├── models/
+│   └── requirements.txt
+│
+└── Deployment
+    ├── Docker (containerization)
+    ├── Vercel (frontend)
+    └── Railway/Render (backend)
+
+
+Phase 1: Authentication System 
+
+Phase 2 React Components (Modulalr Architecture)
+2A Auth Context (src/context/AuthContext.jsx)
+2B useAuth Hook (src/hooks/useAuth.js)
+2C Auth Guard (src/components/Auth/AuthGuard.jsx)
+2D Login Page (src/pages/LoginPage.jsx)
+2E Register Page (src/pages/RegisterPage.jsx)
+2F Team Selector Component (src/components/Prediction/TeamSelector.jsx)
+2G Prediction Form Component (src/components/Prediction/PredictionForm.jsx)
+2H Metrics Card Component (src/components/Dashboard/MetricsCard.jsx)
+2I Main App with Routing (src/App.jsx)
+
+
 
 # PART 7: DEPLOYMENT (Days 11-15)
 
