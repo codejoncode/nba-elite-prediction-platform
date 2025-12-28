@@ -4,11 +4,15 @@ import json
 import os
 from datetime import datetime
 import logging
+from flask_cors import CORS
 
 
 # ==================== APP INITIALIZATION ====================
 
 app = Flask(__name__)
+
+# Enable CORS for all routes
+CORS(app)
 
 # Configure logging
 logging.basicConfig(
