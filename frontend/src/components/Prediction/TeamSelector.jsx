@@ -1,4 +1,5 @@
 import React from 'react';
+import { v4 as uuid4 } from 'uuid';
 
 const NBA_TEAMS = [
   'Lakers', 'Celtics', 'Warriors', 'Suns', 'Mavericks', 'Grizzlies',
@@ -8,11 +9,20 @@ const NBA_TEAMS = [
   'Blazers', 'Pistons', 'Bulls', 'Jayz', 'Magic', 'Rockets'
 ].sort();
 
-export const TeamSelector = ({ label, value, onChange, disabled = false }) => {
+export const TeamSelector = ({ id, label, value, onChange, disabled = false }) => {
+  if (!id) {
+    throw new Error("TeamSelector component requires a unique 'id' prop.");
+  }
+
+  const getOptionKey = (teamName, selectorId) => {
+    return `${teamName}-${selectorId}-${uuid4().slice(0, 8)}`;
+  }
+
   return (
     <div>
       <label className="block text-sm font-semibold text-gray-200 mb-2">{label}</label>
       <select
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
@@ -20,7 +30,7 @@ export const TeamSelector = ({ label, value, onChange, disabled = false }) => {
       >
         <option value="">Select a team</option>
         {NBA_TEAMS.map(team => (
-          <option key={team} value={team}>{team}</option>
+          <option key={getOptionKey(team, id)} value={team}>{team}</option>
         ))}
       </select>
     </div>

@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthProvider'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
-import { DashboardPage } from './pages/DashboardPage'
+import DashboardPage  from './pages/DashboardPage'
 import { useAuth } from './hooks/useAuth'
 
 const ProtectedRoute = ({ children }) => {
