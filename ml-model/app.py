@@ -18,6 +18,12 @@ logger = logging.getLogger(__name__)
 # ==================== APP INITIALIZATION ====================
 app = Flask(__name__)
 CORS(app)
+# ✅ ADD THE SECURITY HEADERS HE
+@app.after_request
+def set_security_headers(response):
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
+    response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
+    return response
 
 # ==================== LOAD PREDICTOR ====================
 try:
@@ -84,42 +90,62 @@ def google_login():
         data = request.json
         
         if not data or 'id_token' not in data:
+            logger.warning("Google login attempt: Missing id_token in request")
             return jsonify({'error': 'Missing id_token'}), 400
         
         id_token = data['id_token']
+        logger.info(f"Attempting Google OAuth verification...")
         
-        # Verify Google token
+        # Import BEFORE try block - catches ImportError immediately
+        import google.oauth2.id_token as google_id_token
+        from google.auth.transport import requests as google_requests
+        
         try:
-            import google.oauth2.id_token as google_id_token
-            from google.auth.transport import requests
+            # Check GOOGLE_CLIENT_ID exists
+            google_client_id = os.getenv('GOOGLE_CLIENT_ID')
+            if not google_client_id:
+                logger.error("CRITICAL: GOOGLE_CLIENT_ID not set in environment")
+                return jsonify({'error': 'Server misconfiguration: Missing GOOGLE_CLIENT_ID'}), 500
             
-            request_obj = requests.Request()
+            logger.info(f"Using Client ID: {google_client_id[:40]}...")
+            
+            # Verify token with Google
+            request_obj = google_requests.Request()
             payload = google_id_token.verify_oauth2_token(
                 id_token,
                 request_obj,
-                os.getenv('GOOGLE_CLIENT_ID')  # From .env
+                google_client_id
             )
             
-            # Extract user info from Google
-            username = payload['email'].split('@')[0].replace('.', '_')
-            email = payload['email']
+            logger.info(f"✓ Google token verified successfully")
+            
+            # Extract user info
+            email = payload.get('email')
+            if not email:
+                logger.error("Google payload missing email field")
+                return jsonify({'error': 'Google token missing email'}), 400
+            
+            username = email.split('@')[0].replace('.', '_')
             name = payload.get('name', username)
             picture = payload.get('picture', '')
             
-            # Create or get user (no password needed!)
+            logger.info(f"Extracted user: {username} ({email})")
+            
+            # Create or get user
             if username not in users_db:
                 user = User(username, email, 'google-oauth-no-password')
                 user.name = name
                 user.picture = picture
                 users_db[username] = user
-                logger.info(f"✓ New Google user created: {username} ({email})")
+                logger.info(f"✓ New Google user created: {username}")
             else:
                 user = users_db[username]
                 user.update_last_login()
-                logger.info(f"✓ Google user logged in: {username}")
+                logger.info(f"✓ Existing user logged in: {username}")
             
             # Generate JWT token
             token = generate_token(username)
+            logger.info(f"✓ JWT token generated")
             
             return jsonify({
                 'success': True,
@@ -133,12 +159,22 @@ def google_login():
                 'token': token
             }), 200
         
+        except ValueError as e:
+            # Token verification failed (expired, invalid signature, etc)
+            logger.error(f"✗ Token verification failed: {str(e)}")
+            return jsonify({'error': f'Token verification failed: {str(e)}'}), 401
+        
         except Exception as e:
-            logger.error(f"Google token verification failed: {e}")
-            return jsonify({'error': 'Invalid Google token'}), 401
+            # Any other error
+            logger.error(f"✗ {type(e).__name__}: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return jsonify({'error': f'{type(e).__name__}: {str(e)}'}), 401
     
     except Exception as e:
-        logger.error(f"Google login error: {e}")
+        logger.error(f"✗ Google login error: {type(e).__name__}: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/auth/me', methods=['GET'])

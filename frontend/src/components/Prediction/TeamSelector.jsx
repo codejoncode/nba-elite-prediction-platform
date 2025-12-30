@@ -6,7 +6,7 @@ const NBA_TEAMS = [
   'Heat', 'Bucks', 'Nuggets', 'Kings', 'Clippers', 'Timberwolves',
   '76ers', 'Cavaliers', 'Pacers', 'Nets', 'Knicks', 'Hawks',
   'Raptors', 'Pistons', 'Hornets', 'Spurs', 'Rockets', 'Pelicans',
-  'Blazers', 'Pistons', 'Bulls', 'Jayz', 'Magic', 'Rockets'
+  'Blazers', 'Pistons', 'Bulls', 'Jazz', 'Magic', 'Rockets'
 ].sort();
 
 export const TeamSelector = ({ id, label, value, onChange, disabled = false }) => {
