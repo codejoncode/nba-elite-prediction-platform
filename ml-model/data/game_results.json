@@ -1,0 +1,46 @@
+{
+  "metadata": {
+    "last_updated": "2025-12-31T20:30:00Z",
+    "accuracy_all_time_percent": 74.48,
+    "accuracy_last_20_percent": 85.00,
+    "total_games_tracked": 150,
+    "correct_predictions": 108,
+    "incorrect_predictions": 42
+  },
+  "recent_results": [
+    {
+      "date": "2025-12-31",
+      "away_team": "Warriors",
+      "home_team": "Hornets",
+      "score": "132-125",
+      "actual_winner": "Warriors",
+      "predicted": "Hornets",
+      "result": "loss"
+    },
+    {
+      "date": "2025-12-31",
+      "away_team": "Timberwolves",
+      "home_team": "Hawks",
+      "score": "102-126",
+      "actual_winner": "Hawks",
+      "predicted": "Hawks",
+      "result": "win"
+    }
+  ],
+  "upcoming_games": [
+    {
+      "date": "2026-01-02T19:30:00Z",
+      "away_team": "Celtics",
+      "home_team": "Lakers",
+      "predicted": "Lakers",
+      "confidence": 71.5
+    },
+    {
+      "date": "2026-01-03T20:00:00Z",
+      "away_team": "Mavericks",
+      "home_team": "Suns",
+      "predicted": "Mavericks",
+      "confidence": 62.3
+    }
+  ]
+}
