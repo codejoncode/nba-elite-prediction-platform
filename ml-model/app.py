@@ -3,6 +3,8 @@ NBA Elite ML Prediction API - Flask Service
 Provides XGBoost predictions for upcoming games
 Runs on separate port (5001) from Node backend (3001)
 Complete with logging, authentication, and comprehensive endpoints
+
+Auto-runs game_results.json sync on startup + scheduled intervals
 """
 
 from flask import Flask, jsonify, request
@@ -15,6 +17,7 @@ import jwt
 from functools import wraps
 import pickle
 import numpy as np
+import json
 
 # Load environment variables
 load_dotenv()
@@ -26,18 +29,40 @@ app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
 
-# Configure CORS
-CORS(app, resources={
-    r"/api/*": {
-        "origins": [
-            os.getenv('FRONTEND_URL', 'http://localhost:3000'),
-            "http://localhost:3001",  # Node backend
-            "http://localhost:5001"   # Self
-        ],
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization", "X-Cron-Token"]
-    }
-})
+# ============================================================================
+# CORS CONFIGURATION - FIXED for React dev server
+# ============================================================================
+CORS(app, 
+    resources={
+        r"/api/*": {
+            "origins": [
+                "http://localhost:3000",      # React dev server (CRA)
+                "http://localhost:5173",      # React dev server (Vite)
+                "http://localhost:3001",      # Node backend
+                "http://localhost:5001",      # Self
+                "http://127.0.0.1:3000",      # Localhost variant
+                "http://127.0.0.1:5173",      # Localhost variant
+            ],
+            "methods": ["GET", "POST", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization", "X-Cron-Token"],
+            "supports_credentials": True
+        },
+        r"/*": {
+            "origins": [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://localhost:3001",
+                "http://localhost:5001",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5173",
+            ],
+            "methods": ["GET", "POST", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization", "X-Cron-Token"],
+            "supports_credentials": True
+        }
+    },
+    max_age=3600
+)
 
 # ============================================================================
 # LOGGING SETUP - Windows-safe (no Unicode checkmarks)
@@ -74,6 +99,44 @@ try:
 except Exception as e:
     logger.error("[ERROR] Failed to load model: %s", str(e), exc_info=True)
     model_loaded = False
+
+# ============================================================================
+# GAME RESULTS DATA - In-Memory Cache
+# ============================================================================
+
+game_results_data = None
+
+def load_game_results():
+    """Load game results from JSON file"""
+    global game_results_data
+    try:
+        game_results_path = os.path.join(os.path.dirname(__file__), 'data', 'game_results.json')
+        if os.path.exists(game_results_path):
+            with open(game_results_path, 'r') as f:
+                game_results_data = json.load(f)
+            logger.info("[OK] Game results loaded from %s", game_results_path)
+            return True
+        else:
+            logger.warning("[WARNING] Game results file not found at %s", game_results_path)
+            game_results_data = {
+                "metadata": {
+                    "last_updated": datetime.utcnow().isoformat(),
+                    "accuracy_all_time_percent": 0.0,
+                    "accuracy_last_20_percent": 0.0,
+                    "total_games_tracked": 0,
+                    "correct_predictions": 0,
+                    "incorrect_predictions": 0
+                },
+                "recent_results": [],
+                "upcoming_games": []
+            }
+            return False
+    except Exception as e:
+        logger.error("[ERROR] Failed to load game results: %s", str(e), exc_info=True)
+        return False
+
+# Load on startup
+load_game_results()
 
 # ============================================================================
 # AUTHENTICATION
@@ -196,6 +259,81 @@ def info():
     except Exception as e:
         logger.error("[ERROR] Info endpoint error: %s", str(e), exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500
+
+
+# ============================================================================
+# GAME RESULTS ENDPOINT (New - No Auth Required)
+# ============================================================================
+
+@app.route('/api/game_results', methods=['GET', 'OPTIONS'])
+def get_game_results():
+    """
+    Get current game results and upcoming games
+    Returns: metadata, recent_results (last 20), upcoming_games
+    No authentication required
+    """
+    try:
+        logger.info("[OK] Game results request from %s", request.remote_addr)
+        
+        if not game_results_data:
+            logger.warning("[WARNING] Game results not loaded")
+            return jsonify({
+                'error': 'Game results not available',
+                'metadata': {
+                    'last_updated': datetime.utcnow().isoformat(),
+                    'accuracy_all_time_percent': 0.0,
+                    'accuracy_last_20_percent': 0.0,
+                    'total_games_tracked': 0,
+                    'correct_predictions': 0,
+                    'incorrect_predictions': 0
+                },
+                'recent_results': [],
+                'upcoming_games': []
+            }), 200
+        
+        return jsonify(game_results_data), 200
+        
+    except Exception as e:
+        logger.error("[ERROR] Game results error: %s", str(e), exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/game_results/refresh', methods=['POST', 'OPTIONS'])
+@cron_token_required
+def refresh_game_results():
+    """
+    Refresh game results from source
+    Requires: X-Cron-Token header
+    Returns: Updated game_results
+    """
+    try:
+        logger.info("[OK] Game results refresh requested")
+        
+        # Reload from disk
+        success = load_game_results()
+        
+        if not success or not game_results_data:
+            logger.error("[ERROR] Failed to load game results")
+            return jsonify({
+                'success': False,
+                'error': 'Failed to load game results'
+            }), 500
+        
+        logger.info("[OK] Game results refreshed successfully")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Game results refreshed',
+            'data': game_results_data,
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+        
+    except Exception as e:
+        logger.error("[ERROR] Game results refresh error: %s", str(e), exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 # ============================================================================
@@ -513,16 +651,18 @@ if __name__ == '__main__':
     logger.info("[OK] Server running on %s:%d", host, port)
     logger.info("[OK] Debug mode: %s", debug)
     logger.info("[OK] Model loaded: %s", model_loaded)
+    logger.info("[OK] Game results loaded: %s", game_results_data is not None)
     logger.info("[OK] Secret key configured: %s", 'Yes' if app.config['SECRET_KEY'] else 'No')
     logger.info("=" * 70)
 
     print("")
     print("╔════════════════════════════════════════════════╗")
-    print("║     [OK] 🏀 Flask NBA ELITE ML PREDICTION AP  ║")
-    print(f"║    Port: {port}                              ║")
-    print(f"║    Model: {'XGBoost (74.73% accuracy)' if model_loaded else 'NOT LOADED'}      ║")
+    print("║     [OK] NBA ELITE ML PREDICTION API            ║")
+    print(f"║     Port: {port}                              ║")
+    print(f"║     Model: {'XGBoost (74.73% accuracy)' if model_loaded else 'NOT LOADED'}      ║")
     print("║     Status: Running                            ║")
     print("║     Auth: JWT Token                            ║")
+    print("║     CORS: Enabled (localhost:3000, 5173)       ║")
     print("║     Data: ml-model (single source)             ║")
     print("╚════════════════════════════════════════════════╝")
     print("")
