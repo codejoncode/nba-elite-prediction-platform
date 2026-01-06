@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-NBA Game Update Script - Automated CSV Updates
-Fetches latest results from ESPN API → Updates CSV → Notifies Backend
-Runs via cron job (daily 2 AM recommended)
-FIXED: Correctly parses ESPN API STATUS_FINAL status
+NBA Game Update Script - Fetches Real Games from ESPN API
+Updates game_results.json with completed and upcoming games
+Runs via cron job or scheduled task (daily 2 AM recommended)
 """
 
 import json
@@ -26,15 +25,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 def load_db():
-    """Load game results database"""
+    """Load existing game results database"""
     try:
         if os.path.exists(RESULTS_DB_PATH):
             with open(RESULTS_DB_PATH, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                db = json.load(f)
+                logger.info("[DB] Loaded existing database")
+                return db
     except Exception as e:
-        logger.warning(f"Could not load database: {e}")
-    
+        logger.warning("[DB] Could not load database: %s", e)
+
+    # Default empty database
     return {
         'metadata': {
             'last_updated': datetime.utcnow().isoformat(),
@@ -48,164 +51,200 @@ def load_db():
         'upcoming_games': []
     }
 
+
 def save_db(db):
-    """Save database"""
+    """Save database to file"""
     try:
+        os.makedirs(os.path.dirname(RESULTS_DB_PATH), exist_ok=True)
         with open(RESULTS_DB_PATH, 'w', encoding='utf-8') as f:
             json.dump(db, f, indent=2, ensure_ascii=False)
-        logger.info(f"[OK] Database saved")
+        logger.info("[DB] Saved database with %d recent + %d upcoming", 
+                   len(db.get('recent_results', [])), 
+                   len(db.get('upcoming_games', [])))
         return True
     except Exception as e:
-        logger.error(f"Failed to save database: {e}")
+        logger.error("[DB] Failed to save database: %s", e)
         return False
 
-def fetch_games():
-    """Fetch all NBA games (completed + scheduled)"""
+
+def fetch_all_games():
+    """Fetch all NBA games (completed + scheduled) from ESPN API"""
     try:
-        logger.info("Fetching games from ESPN API...")
+        logger.info("[ESPN] Fetching games from ESPN API...")
         response = requests.get(ESPN_SCOREBOARD, timeout=15)
-        
+
         if response.status_code != 200:
-            logger.error(f"ESPN API returned {response.status_code}")
+            logger.error("[ESPN] API returned status %d", response.status_code)
             return [], []
-        
+
         data = response.json()
         events = data.get('events', [])
-        
+        logger.info("[ESPN] Got %d total events", len(events))
+
         completed = []
-        scheduled = []
-        
-        for event in events:
+        upcoming = []
+
+        for idx, event in enumerate(events):
             try:
-                status_type = event.get('status', {}).get('type', {}).get('name', '')
-                
+                # Get status
+                status_obj = event.get('status', {})
+                status_type = status_obj.get('type', '')
+
+                # Get competitions
                 competitions = event.get('competitions', [])
                 if not competitions:
                     continue
-                
+
                 comp = competitions[0]
                 competitors = comp.get('competitors', [])
                 if len(competitors) < 2:
                     continue
-                
-                home_comp = next((c for c in competitors if c.get('homeAway') == 'home'), competitors[0])
-                away_comp = next((c for c in competitors if c.get('homeAway') == 'away'), competitors[1])
-                
+
+                # Find home and away
+                home_comp = next((c for c in competitors if c.get('homeAway') == 'home'), None)
+                away_comp = next((c for c in competitors if c.get('homeAway') == 'away'), None)
+
+                if not home_comp or not away_comp:
+                    home_comp, away_comp = competitors[1], competitors[0]
+
                 game_date = event.get('date', '')
-                home_team = home_comp.get('team', {}).get('displayName', '').split()[-1]  # Last word only
-                away_team = away_comp.get('team', {}).get('displayName', '').split()[-1]
-                home_score = int(home_comp.get('score', '0') or 0)
-                away_score = int(away_comp.get('score', '0') or 0)
-                
+                home_team = home_comp.get('team', {}).get('displayName', '')
+                away_team = away_comp.get('team', {}).get('displayName', '')
+
+                # Skip invalid teams
+                if not home_team or not away_team:
+                    continue
+
+                home_score = int(home_comp.get('score', 0) or 0)
+                away_score = int(away_comp.get('score', 0) or 0)
+
+                # Parse status
                 if status_type == 'STATUS_FINAL':
-                    actual_winner = away_team if away_score > home_score else home_team
+                    # Completed game
+                    actual_winner = home_team if home_score > away_score else away_team
                     completed.append({
-                        'date': game_date[:10],  # YYYY-MM-DD only
+                        'date': game_date[:10],  # YYYY-MM-DD
                         'home_team': home_team,
                         'away_team': away_team,
                         'home_score': home_score,
                         'away_score': away_score,
                         'actual_winner': actual_winner,
-                        'score_str': f"{away_score}-{home_score}"
+                        'score': f"{away_score}-{home_score}",
+                        'predicted': None,
+                        'confidence': None,
+                        'result': None
                     })
-                    logger.info(f"[COMPLETE] {away_team} {away_score} @ {home_team} {home_score}")
-                
-                elif status_type not in ['STATUS_IN_PROGRESS', 'STATUS_HALFTIME']:
-                    scheduled.append({
+                    logger.info("[ESPN] [FINAL] %s %d @ %s %d", away_team, away_score, home_team, home_score)
+
+                elif status_type in ['STATUS_SCHEDULED', 'STATUS_POSTPONED']:
+                    # Upcoming game
+                    upcoming.append({
                         'date': game_date,
                         'home_team': home_team,
-                        'away_team': away_team
+                        'away_team': away_team,
+                        'predicted': None,
+                        'confidence': None
                     })
-                    logger.info(f"[SCHEDULED] {away_team} @ {home_team}")
-                
+                    logger.info("[ESPN] [UPCOMING] %s @ %s | %s", away_team, home_team, game_date)
+
             except Exception as e:
-                logger.debug(f"Error parsing event: {e}")
+                logger.debug("[ESPN] Error parsing event %d: %s", idx, e)
                 continue
-        
-        logger.info(f"Found {len(completed)} completed, {len(scheduled)} scheduled")
-        return completed, scheduled
-        
+
+        logger.info("[ESPN] Found %d completed, %d upcoming games", len(completed), len(upcoming))
+        return completed, upcoming
+
+    except requests.exceptions.Timeout:
+        logger.error("[ESPN] Request timeout")
+        return [], []
     except Exception as e:
-        logger.error(f"Error fetching games: {e}")
+        logger.error("[ESPN] Error: %s", e)
         return [], []
 
-def update_results(db, completed_games):
-    """Update recent results (keep only last 20)"""
+
+def merge_results(db, completed_games):
+    """Merge completed games into recent_results (avoid duplicates)"""
+    updated_count = 0
+
     if not completed_games:
-        return 0
-    
-    updated = 0
-    
+        logger.info("[MERGE] No completed games to add")
+        return updated_count
+
+    existing_recent = db.get('recent_results', [])
+
     for game in completed_games:
-        # Check if already in recent_results
+        # Check if already exists
         exists = any(
             r['date'] == game['date'] and 
             r['home_team'] == game['home_team'] and 
             r['away_team'] == game['away_team']
-            for r in db['recent_results']
+            for r in existing_recent
         )
-        
-        if not exists:
-            db['recent_results'].append({
-                'date': game['date'],
-                'away_team': game['away_team'],
-                'home_team': game['home_team'],
-                'score': game['score_str'],
-                'actual_winner': game['actual_winner'],
-                'predicted': None,  # Will be filled by predictions_api.py
-                'result': None      # Will be 'win' or 'loss'
-            })
-            updated += 1
-            logger.info(f"[OK] Added result: {game['away_team']} @ {game['home_team']}")
-    
-    # Keep only last 20 results
-    if len(db['recent_results']) > 20:
-        db['recent_results'] = db['recent_results'][-20:]
-        logger.info(f"[TRIM] Keeping last 20 results")
-    
-    return updated
 
-def update_upcoming(db, scheduled_games):
+        if not exists:
+            existing_recent.append(game)
+            updated_count += 1
+            logger.info("[MERGE] Added: %s @ %s (%s)", game['away_team'], game['home_team'], game['date'])
+
+    # Keep only last 20 results
+    if len(existing_recent) > 20:
+        removed = len(existing_recent) - 20
+        existing_recent = existing_recent[-20:]
+        logger.info("[MERGE] Trimmed to last 20 results (removed %d)", removed)
+
+    db['recent_results'] = existing_recent
+    return updated_count
+
+
+def update_upcoming(db, upcoming_games):
     """Update upcoming games"""
-    if not scheduled_games:
+    if not upcoming_games:
+        logger.info("[UPCOMING] No upcoming games")
         return
-    
-    # Clear old upcoming games, add new ones
-    db['upcoming_games'] = []
-    
-    for game in scheduled_games:
-        db['upcoming_games'].append({
-            'date': game['date'],
-            'away_team': game['away_team'],
-            'home_team': game['home_team'],
-            'predicted': None,      # Will be filled by predictions_api.py
-            'confidence': None
-        })
-    
-    logger.info(f"[OK] Updated {len(db['upcoming_games'])} upcoming games")
+
+    # Replace upcoming games entirely
+    db['upcoming_games'] = upcoming_games
+    logger.info("[UPCOMING] Updated %d upcoming games", len(upcoming_games))
+
 
 def main():
-    logger.info("=" * 70)
-    logger.info("NBA GAME RESULTS - UPDATE")
-    logger.info("=" * 70)
-    
+    logger.info("=" * 90)
+    logger.info("NBA GAME UPDATE - ESPN API FETCH")
+    logger.info("=" * 90)
+
+    # Load existing database
     db = load_db()
-    
-    completed, scheduled = fetch_games()
-    
+
+    # Fetch real games from ESPN
+    completed, upcoming = fetch_all_games()
+
+    # Merge results
     if completed:
-        updated = update_results(db, completed)
-        logger.info(f"[OK] {updated} new results added")
-    
-    if scheduled:
-        update_upcoming(db, scheduled)
-    
+        added = merge_results(db, completed)
+        logger.info("[RESULT] Added %d new completed games", added)
+
+    # Update upcoming
+    if upcoming:
+        update_upcoming(db, upcoming)
+
+    # Update metadata
     db['metadata']['last_updated'] = datetime.utcnow().isoformat()
-    save_db(db)
-    
-    logger.info(f"[SUMMARY] Recent results: {len(db['recent_results'])}")
-    logger.info(f"[SUMMARY] Upcoming games: {len(db['upcoming_games'])}")
-    logger.info("=" * 70)
+
+    # Save
+    if save_db(db):
+        logger.info("[SUCCESS] Database saved")
+    else:
+        logger.error("[FAILURE] Failed to save database")
+        return False
+
+    logger.info("=" * 90)
+    logger.info("[SUMMARY] Recent results: %d", len(db.get('recent_results', [])))
+    logger.info("[SUMMARY] Upcoming games: %d", len(db.get('upcoming_games', [])))
+    logger.info("=" * 90)
+
+    return True
+
 
 if __name__ == '__main__':
-    main()
+    success = main()
+    sys.exit(0 if success else 1)

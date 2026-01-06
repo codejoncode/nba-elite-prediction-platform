@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "last_updated": "2025-12-31T20:30:00Z",
+    "last_updated": "2026-01-05T19:00:08.862983",
     "accuracy_all_time_percent": 74.48,
-    "accuracy_last_20_percent": 85.00,
+    "accuracy_last_20_percent": 85.0,
     "total_games_tracked": 150,
     "correct_predictions": 108,
     "incorrect_predictions": 42
@@ -29,18 +29,60 @@
   ],
   "upcoming_games": [
     {
-      "date": "2026-01-02T19:30:00Z",
-      "away_team": "Celtics",
-      "home_team": "Lakers",
-      "predicted": "Lakers",
-      "confidence": 71.5
+      "date": "2026-01-06T00:00Z",
+      "away_team": "Knicks",
+      "home_team": "Pistons",
+      "predicted": null,
+      "confidence": null
     },
     {
-      "date": "2026-01-03T20:00:00Z",
-      "away_team": "Mavericks",
-      "home_team": "Suns",
-      "predicted": "Mavericks",
-      "confidence": 62.3
+      "date": "2026-01-06T00:30Z",
+      "away_team": "Bulls",
+      "home_team": "Celtics",
+      "predicted": null,
+      "confidence": null
+    },
+    {
+      "date": "2026-01-06T00:30Z",
+      "away_team": "Hawks",
+      "home_team": "Raptors",
+      "predicted": null,
+      "confidence": null
+    },
+    {
+      "date": "2026-01-06T01:00Z",
+      "away_team": "Suns",
+      "home_team": "Rockets",
+      "predicted": null,
+      "confidence": null
+    },
+    {
+      "date": "2026-01-06T01:00Z",
+      "away_team": "Hornets",
+      "home_team": "Thunder",
+      "predicted": null,
+      "confidence": null
+    },
+    {
+      "date": "2026-01-06T01:30Z",
+      "away_team": "Nuggets",
+      "home_team": "76ers",
+      "predicted": null,
+      "confidence": null
+    },
+    {
+      "date": "2026-01-06T03:00Z",
+      "away_team": "Warriors",
+      "home_team": "Clippers",
+      "predicted": null,
+      "confidence": null
+    },
+    {
+      "date": "2026-01-06T03:00Z",
+      "away_team": "Jazz",
+      "home_team": "Blazers",
+      "predicted": null,
+      "confidence": null
     }
   ]
 }

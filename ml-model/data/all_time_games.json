@@ -1,0 +1,57 @@
+[
+  {
+    "date": "2025-12-30",
+    "home_team": "Lakers",
+    "away_team": "Celtics",
+    "home_score": 110,
+    "away_score": 105,
+    "actual_winner": "Lakers",
+    "predicted": null,
+    "confidence": null,
+    "result": null
+  },
+  {
+    "date": "2025-12-29",
+    "home_team": "Warriors",
+    "away_team": "Suns",
+    "home_score": 115,
+    "away_score": 120,
+    "actual_winner": "Suns",
+    "predicted": null,
+    "confidence": null,
+    "result": null
+  },
+  {
+    "date": "2025-12-28",
+    "home_team": "Knicks",
+    "away_team": "Heat",
+    "home_score": 100,
+    "away_score": 95,
+    "actual_winner": "Knicks",
+    "predicted": null,
+    "confidence": null,
+    "result": null
+  },
+  {
+    "date": "2025-12-27",
+    "home_team": "Nuggets",
+    "away_team": "Timberwolves",
+    "home_score": 118,
+    "away_score": 112,
+    "actual_winner": "Nuggets",
+    "predicted": null,
+    "confidence": null,
+    "result": null
+  },
+  {
+    "date": "2025-12-26",
+    "home_team": "Mavericks",
+    "away_team": "Pacers",
+    "home_score": 125,
+    "away_score": 130,
+    "actual_winner": "Pacers",
+    "predicted": null,
+    "confidence": null,
+    "result": null
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "date": "2026-01-05T12:12:26Z",
+    "home_team": "New Orleans Pelicans",
+    "away_team": "Sacramento Kings",
+    "predicted_winner": "HOME",
+    "confidence": 0.571,
+    "source": "fallback"
+  },
+  {
+    "date": "2026-01-06T12:12:26Z",
+    "home_team": "Orlando Magic",
+    "away_team": "Washington Wizards",
+    "predicted_winner": "AWAY",
+    "confidence": 0.647,
+    "source": "fallback"
+  },
+  {
+    "date": "2026-01-07T12:12:26Z",
+    "home_team": "Denver Nuggets",
+    "away_team": "Memphis Grizzlies",
+    "predicted_winner": "HOME",
+    "confidence": 0.733,
+    "source": "fallback"
+  },
+  {
+    "date": "2026-01-08T12:12:26Z",
+    "home_team": "Los Angeles Lakers",
+    "away_team": "Milwaukee Bucks",
+    "predicted_winner": "AWAY",
+    "confidence": 0.592,
+    "source": "fallback"
+  },
+  {
+    "date": "2026-01-09T12:12:26Z",
+    "home_team": "Orlando Magic",
+    "away_team": "San Antonio Spurs",
+    "predicted_winner": "AWAY",
+    "confidence": 0.739,
+    "source": "fallback"
+  },
+  {
+    "date": "2026-01-10T12:12:26Z",
+    "home_team": "Philadelphia 76ers",
+    "away_team": "Toronto Raptors",
+    "predicted_winner": "AWAY",
+    "confidence": 0.597,
+    "source": "fallback"
+  },
+  {
+    "date": "2026-01-11T12:12:26Z",
+    "home_team": "Houston Rockets",
+    "away_team": "New York Knicks",
+    "predicted_winner": "HOME",
+    "confidence": 0.688,
+    "source": "fallback"
+  }
+]
